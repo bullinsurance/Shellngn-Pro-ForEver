@@ -1,0 +1,5 @@
+# Secrets / entorno local
+.env
+
+# Datos persistentes del contenedor (DB, licencia, llaves de cifrado, TLS, SAML)
+data/
