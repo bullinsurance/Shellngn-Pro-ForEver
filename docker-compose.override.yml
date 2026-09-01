@@ -1,0 +1,46 @@
+# Servicio del panel de administración (backups/clones/recrear), separado
+# de docker-compose.yml a propósito:
+#
+# - Docker Compose mezcla este archivo automáticamente con
+#   docker-compose.yml (es la convención estándar de "override") -- un
+#   simple "docker compose up -d" ya levanta los dos servicios juntos, sin
+#   flags extra.
+# - export-clone.sh solo empaqueta docker-compose.yml (no este archivo) al
+#   generar un clon: así un clon desplegado en otro puerto/host es
+#   liviano, solo la app -- no arrastra el panel ni sus permisos sobre el
+#   socket de Docker.
+#
+# Ver README, sección "Panel web", para el detalle de qué monta y por qué.
+services:
+  panel:
+    build: ./panel
+    container_name: ${PANEL_CONTAINER_NAME:-shellngn-panel}
+    restart: unless-stopped
+    depends_on:
+      - shellngn
+    # Comparte la red del host: así "localhost:${APP_PORT}" adentro del
+    # panel (usado por rebuild-inplace.sh para chequear que la instancia
+    # responde) apunta al puerto publicado por el servicio "shellngn" de
+    # arriba, igual que cuando el panel corría como proceso del host.
+    network_mode: host
+
+    environment:
+      - PROJECT_DIR=${PROJECT_DIR:?Definí PROJECT_DIR en .env con el path absoluto de este repo}
+
+    volumes:
+      # Socket de Docker del host: así el panel puede manejar el
+      # contenedor "shellngn" (backups/rebuild/clones) desde adentro.
+      - /var/run/docker.sock:/var/run/docker.sock
+      # Repo completo y su directorio padre, montados en el MISMO path que
+      # tienen en el host (ver PROJECT_DIR/HOST_APPS_DIR en .env) -- así
+      # "docker compose" ejecutado desde el panel resuelve ./data, etc.
+      # contra las rutas reales del host, y "Desplegar copia" puede crear
+      # ../shellngn-<nombre> como hace hoy.
+      - ${HOST_APPS_DIR:?Definí HOST_APPS_DIR en .env con el path absoluto al directorio padre del repo}:${HOST_APPS_DIR:?Definí HOST_APPS_DIR en .env}
+      # Horarios de backup/recreación automática (antes en el crontab del
+      # host, ahora en el crontab de este contenedor) -- persistente entre
+      # recreaciones del contenedor.
+      - panel_cron:/var/spool/cron/crontabs
+
+volumes:
+  panel_cron:

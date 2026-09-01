@@ -3,3 +3,18 @@
 
 # Datos persistentes del contenedor (DB, licencia, llaves de cifrado, TLS, SAML)
 data/
+data.old-*/
+
+# Backups y clones: contienen credenciales, licencia y llaves reales
+backups/
+clones/
+
+# Panel web: credenciales de acceso, pid y logs
+panel/.env
+panel/panel.pid
+panel/panel.log
+panel/rebuild-scheduled.log
+
+# Bytecode compilado de Python
+__pycache__/
+*.pyc

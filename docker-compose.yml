@@ -1,7 +1,7 @@
 services:
   shellngn:
     image: shellngn/pro:latest
-    container_name: shellngn-pro
+    container_name: ${CONTAINER_NAME:-shellngn-pro}
     restart: unless-stopped
 
     environment:
