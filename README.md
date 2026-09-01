@@ -36,6 +36,31 @@ Navegador ──► http://<IP-del-host>:5058 ──► contenedor shellngn-pane
 
 - Docker y Docker Compose instalados.
 
+## Instalación rápida (recomendado)
+
+Este repo es privado, así que no hay una URL pública de `curl | sh`. El
+equivalente para un repo privado es cloná (con git ya autenticado en esa
+máquina) y corré el instalador local:
+
+```bash
+git clone https://github.com/bullinsurance/Shellngn-Pro-ForEver.git
+cd Shellngn-Pro-ForEver
+./install.sh
+```
+
+`install.sh` levanta Shellngn + el panel juntos (`docker compose up -d
+--build`), espera a que ambos respondan, y al final imprime las dos URLs
+más la contraseña del panel (autogenerada). Para Shellngn en sí no hay
+contraseña que darte automáticamente — el primer login se completa a
+mano en el navegador, ver el porqué en el Paso 3 más abajo.
+
+Es re-ejecutable: si ya existe `data/pro-prod.sqlite` asume que es una
+instancia existente y no toca nada de Shellngn, solo (re)levanta los
+contenedores.
+
+El resto de esta sección (Pasos 1-3) es la versión manual, paso a paso,
+de lo mismo.
+
 ## Paso 1: Revisar el archivo `.env`
 
 Ya existe un `.env` (copiado de `.env.example`) con valores por defecto
@@ -62,19 +87,26 @@ Verifica que quedó saludable:
 docker compose ps
 ```
 
-## Paso 3: Acceder y cambiar la contraseña por defecto
+## Paso 3: Completar el primer login
 
 - Acceso local: http://localhost:8080
 - Acceso en LAN: http://<IP-LAN-del-host>:8080
 
-**Credenciales por defecto: `admin` / `admin`.**
+La documentación oficial de la imagen dice que el usuario por defecto es
+`admin` / `admin`, pero en pruebas la instancia realmente arranca con un
+usuario semilla `demo@shellngn.local` (no `admin`) — completá el primer
+login/creación de usuario directo en el navegador la primera vez que
+entrés, no asumas que esas credenciales van a funcionar tal cual.
 
-⚠️ **Cambia esta contraseña inmediatamente después del primer login**
-(Configuración → Usuarios), y activa 2FA (TOTP) para la cuenta admin.
+⚠️ **Cambiá la contraseña inmediatamente después del primer login**
+(Configuración → Usuarios), y activá 2FA (TOTP) para la cuenta admin.
 
-Si quedas bloqueado o necesitas resetear la contraseña sin entrar a la UI,
-usa la variable `RESET_USER` (ver tabla de variables), reinicia el
-contenedor una vez, y luego **quítala del `.env`**.
+La variable `RESET_USER` (documentada más abajo) está pensada para
+resetear una contraseña sin entrar a la UI, pero **en pruebas no
+funcionó de forma confiable** (falla con "Reset user not found" sin
+importar qué identificador se use — admin, el email semilla, el id).
+No confíes en ella; si quedás bloqueado, la vía que sí funciona es
+entrar por la UI o restaurar desde un backup (ver sección "Backups").
 
 ## Variables de entorno
 
@@ -182,9 +214,10 @@ para hacer todo esto desde el navegador en vez de la terminal:
 - Ver qué instancias `shellngn-pro*` están corriendo.
 - Recrear esta instancia desde cero (ver sección de abajo).
 
-Corre como **contenedor aparte, definido en el mismo `docker-compose.yml`**
-(servicio `panel`) — un solo `docker compose up -d` levanta la app y el
-panel juntos:
+Corre como **contenedor aparte**, definido en `docker-compose.override.yml`
+(servicio `panel` — separado de `docker-compose.yml` a propósito, ver el
+comentario en ese archivo). Docker Compose lo mezcla automáticamente: un
+solo `docker compose up -d` levanta la app y el panel juntos:
 
 ```bash
 docker compose up -d          # levanta shellngn-pro Y el panel
@@ -221,6 +254,15 @@ ahora es explícito. Sigue aplicando: **no lo expongas a internet sin un
 reverse proxy con su propio TLS/autenticación** — quien entre al panel
 puede crear/desplegar/recrear contenedores, leer backups con credenciales,
 y en la práctica tiene control total del host vía el socket de Docker.
+
+**Los archivos que genera (`panel/.env`, backups, clones) quedan con
+dueño `root` en el host**, porque el contenedor corre como root (lo
+necesita para leer/escribir el crontab del sistema y el socket de Docker
+sin pelear con permisos de usuario). Para leerlos desde el host sin
+`sudo`, usá `docker compose exec panel cat <ruta>` en vez de abrirlos
+directo (así lo hace `install.sh` para mostrarte la contraseña del
+panel). No es un problema para el uso normal — el panel gestiona esos
+archivos él mismo — pero tenelo en cuenta si vas a tocarlos a mano.
 
 Las credenciales (HTTP Basic Auth) están en `panel/.env`, generadas la
 primera vez que corrió — se preservan igual que antes al pasar a Docker

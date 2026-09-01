@@ -12,10 +12,12 @@ services:
       - LOG_LEVEL=${LOG_LEVEL:-info}
       - LOG_TO_FILE=${LOG_TO_FILE:-false}
       - LOG_DIR=${LOG_DIR:-./logs}
+      # RESET_USER activo (vacío es no-op) para que install.sh pueda fijar
+      # la contraseña del primer usuario en el primer arranque.
+      - RESET_USER=${RESET_USER:-}
       # Descomentar solo si se necesita, ver README para más detalles
       # - TLS_CERT=${TLS_CERT}
       # - TLS_KEY=${TLS_KEY}
-      # - RESET_USER=${RESET_USER}
 
     volumes:
       - ./data:/home/node/server/data
